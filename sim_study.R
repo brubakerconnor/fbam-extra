@@ -10,6 +10,7 @@
 # [4] nsim              integer   number of simulation repetitions (e.g., 100)
 # [5] ncores            integer   number of cores to use for parallelization
 # [6] results_dir       string    where to save the simulation results (.rds file)
+# [6] ntapers           double    exponential factor of length for number of tapers (e.g, 0.75 = T^0.75)
 args <- commandArgs(trailingOnly = T)
 model_name <- args[1]
 nrep <- as.integer(args[2])
@@ -17,35 +18,30 @@ len <- as.integer(args[3])
 nsim <- as.integer(args[4])
 ncores <- as.integer(args[5])
 results_dir <- args[6]
+taper_exp <- as.numeric(args[7])
+if (is.na(taper_exp)) {
+  ntapers <- NULL
+} else {
+  ntapers <- floor(len^taper_exp)
+}
 
-# make sure results directory exists
 if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
-
-# set seed for reproducibility and load fbam library
 set.seed(451)
 library(fbam)
 source("sim_models.R")
-
-# print parameter settings to log
 cat("STUDY PARAMETERS:\n",
     "nsim: ", nsim, "\n",
     "ncores: ", ncores, "\n",
     "model_name: ", model_name, "\n",
     "nrep: ", nrep, "\n",
     "len: ", len, "\n",
-    "results_dir: ", results_dir, "\n")
+    "results_dir: ", results_dir, "\n",
+    "ntapers: ", ntapers, "\n")
 
-# path to results data file
-
-
-
-# run simulation nsim times and save results to disk at each iteration
 SIM_START_TIME <- Sys.time()
 output_data <- list()
 nsuccess <- 0; nfail <- 0
 while (nsuccess < nsim & nfail < nsim) {
-  # attempt the simulation until the required number of successes are met
-  # terminate once too many failures occur
   tryCatch({
     data_fname <- file.path(results_dir,
                             paste0(model_name, "_nrep=", nrep, "_len=", len,
@@ -60,7 +56,7 @@ while (nsuccess < nsim & nfail < nsim) {
     
     cat("Running FBAM on generated data...\n")
     FBAM_START_TIME <- Sys.time()
-    out <- fbam(dat$x, nbands = 2:6, nsubpop = 2:6, ncores = ncores)
+    out <- fbam(dat$x, nbands = 2:6, nsubpop = 2:6, ncores = ncores, ntapers = ntapers)
     FBAM_RUNTIME <- as.numeric(Sys.time() - FBAM_START_TIME, units = "secs")
     cat("Completed in", FBAM_RUNTIME, " seconds.\n")
     
